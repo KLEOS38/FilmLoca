@@ -1,0 +1,21 @@
+
+# Allow all web crawlers (good for SEO)
+User-agent: *
+Allow: /
+
+# Allow Google crawlers specifically
+User-agent: Googlebot
+Allow: /
+
+# Allow Bing crawlers
+User-agent: Bingbot
+Allow: /
+
+# Allow social media crawlers (for link sharing)
+User-agent: Twitterbot
+Allow: /
+User-agent: facebookexternalhit
+Allow: /
+
+# Sitemap location (to be added when deployed)
+Sitemap: https://www.filmloca.com/sitemap.xml

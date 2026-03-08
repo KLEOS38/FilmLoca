@@ -1,0 +1,88 @@
+import React, { useState, useMemo } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { HelpCircle, MessageSquare, Phone, Mail, Search } from "lucide-react";
+
+const HelpCenter = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const faqs = [
+    {
+      question: "How do I book a location?",
+      answer: "To book a location, browse our listings and select one you're interested in. Check availability for your dates, then click \"Book Now\". The property owner will review your request and confirm if the location is available."
+    },
+    {
+      question: "What payment methods do you accept?",
+      answer: "We accept all major credit cards. We also support bank transfers for certain slates."
+    },
+    {
+      question: "How do I list my property?",
+      answer: "To list your property, create an account and click on \"List Your Property\" in navigation. Follow the step-by-step process to add details, photos, pricing, and availability for your location."
+    },
+    {
+      question: "How do I cancel a slate?",
+      answer: "To cancel a slate, go to your account dashboard and select the slate you wish to cancel. Follow the cancellation process, and your refund will be processed according to applicable cancellation policy."
+    },
+    {
+      question: "Is my property suitable for a film production?",
+      answer: "We accept a diverse range of locations. Generally, properties with unique features, good lighting, spacious rooms, reliable utilities (power and water), and easy access for crew/equipment are highly sought after."
+    },
+    {
+      question: "What kind of filming projects do you host?",
+      answer: "We host various filming projects."
+    },
+    {
+      question: "How is rental price determined for filming?",
+      answer: "Prices are set by the property owners."
+    },
+    {
+      question: "Can I crew move or alter furniture and decor?",
+      answer: "Minor adjustments, like moving small pieces of furniture, are generally permitted within the agreed-upon filming area. However, all significant furniture removal, structural alterations, painting, or drilling must be pre-approved by host and documented in the agreement. Everything must be returned to its original state afterward."
+    },
+    {
+      question: "As a host, do I need to be present during the shoot?",
+      answer: "While some hosts prefer to be present, you may designate a trusted representative or property manager to be on-site. We highly recommend having someone present to ensure the smooth execution of the shoot and to protect your property."
+    },
+    {
+      question: "What about power supply and generator use?",
+      answer: "This is a required provision by property owners. However, if the production should want to bring their own backup power supply, that is up to them."
+    },
+    {
+      question: "What are the terms for cancellation or overstaying?",
+      answer: "Cancellation is as stated in cancellation policy. If the production overstays the booked time, an overtime fee (typically a high hourly rate) will be applied, usually calculated from the half-day or full-day rate."
+    },
+    {
+      question: "Are there restrictions on content that can be filmed?",
+      answer: "Not typically. However, it is advisable to confirm with the host."
+    },
+    {
+      question: "What happens if filming causes accidental damage to the premises or my personal property?",
+      answer: "The production company is liable for damages to the premises or any personal property."
+    },
+    {
+      question: "What security measures will be in place during the shoot?",
+      answer: "For the duration of the shoot, the production is required to provide its own professional security personnel (separate from the property's regular guards, if any)."
+    },
+    {
+      question: "What is FUP (Filmloca Usage Protection)?",
+      answer: (
+        <>
+          FUP is a goodwill program that helps cover accidental damages during approved Filmloca bookings. There are separate FUP programs for Property Owners and Filmmakers. Visit the{" "}
+          <Link to="/fup-program" className="text-nollywood-primary hover:underline">FUP page</Link>
+          {" "}to learn more about eligibility, coverage, and requirements for your role.
+        </>
+      )
+    },
+    {
+      question: "How do I apply for FUP coverage?",

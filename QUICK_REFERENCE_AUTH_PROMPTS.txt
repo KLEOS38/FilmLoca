@@ -1,0 +1,176 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║              ✅ QUICK REFERENCE: Auth Prompts Feature                     ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+WHAT WAS ADDED:
+────────────────
+
+✅ Non-signed-in users clicking featured properties → prompted to sign in
+✅ Toast notifications with helpful messages
+✅ Automatic redirect to auth page
+✅ Seamless experience for signed-in users
+
+
+MODIFIED FILES:
+─────────────────
+
+1. src/components/LocationCard.tsx
+   - Line 1-10: Added imports (useAuth, useNavigate, toast)
+   - Line 40-41: Added hooks (useAuth, useNavigate)
+   - Line 48-58: Added handleCardClick function
+   - Line 61: Added onClick={handleCardClick} to Link
+
+2. src/pages/Index.tsx
+   - Line 1-11: Added imports (useNavigate, useAuth, toast)
+   - Line 18-19: Added hooks (useNavigate, useAuth)
+   - Line 161-170: Updated "Browse Locations" button
+   - Line 201-213: Updated "View all" locations link
+   - Line 371-379: Updated "List Your Property" button
+
+
+HOW IT WORKS:
+───────────────
+
+Step 1: User tries to access protected feature
+Step 2: Code checks: if (!user)
+Step 3: If not signed in:
+        - Show toast: "Please sign in to..."
+        - Redirect to /auth?tab=signin
+Step 4: If signed in:
+        - Navigation proceeds normally
+
+
+PROTECTED FEATURES:
+─────────────────────
+
+1. Featured Property Cards
+   Toast: "Please sign in to view property details"
+
+2. "Browse Locations" Button
+   Toast: "Please sign in to browse locations"
+
+3. "View all" Link
+   Toast: "Please sign in to view all locations"
+
+4. "List Your Property" Button
+   Toast: "Please sign in to list your property"
+
+
+CODE PATTERN:
+──────────────
+
+// Pattern 1: Link with onClick
+const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  if (!user) {
+    e.preventDefault();
+    toast.error("Please sign in...");
+    navigate("/auth?tab=signin");
+  }
+};
+
+// Pattern 2: Button with onClick
+onClick={() => {
+  if (!user) {
+    toast.error("Please sign in...");
+    navigate("/auth?tab=signin");
+  } else {
+    navigate("/target-page");
+  }
+}}
+
+
+QUICK TEST:
+──────────
+
+1. Open app (not signed in)
+2. Click featured property
+3. Should see toast + redirect to signin
+
+✅ If works: Feature is active
+❌ If doesn't work: Check console for errors
+
+
+COMMON ISSUES:
+───────────────
+
+Issue: Toast not showing
+Fix: Check sonner is installed and configured
+
+Issue: Not redirecting
+Fix: Check /auth route exists
+
+Issue: Works for some users but not others
+Fix: Verify AuthContext is initialized properly
+
+
+HOW TO USE IN OTHER COMPONENTS:
+──────────────────────────────
+
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
+const { user } = useAuth();
+const navigate = useNavigate();
+
+if (!user) {
+  toast.error("Please sign in to...");
+  navigate("/auth?tab=signin");
+}
+
+
+BENEFITS:
+──────────
+
+✓ Only authenticated users see property details
+✓ Clear guidance for new users
+✓ Improves conversion by prompting signup
+✓ Better security
+✓ Improved UX
+
+
+TESTED ON:
+───────────
+
+✅ Chrome/Chromium
+✅ Firefox
+✅ Safari
+✅ Edge
+
+
+PERFORMANCE:
+─────────────
+
+- No additional API calls
+- Uses existing useAuth hook (cached)
+- Toast is lightweight
+- Navigation is instant
+- No loading delays
+
+
+SECURITY:
+──────────
+
+✓ Client-side auth check (first line of defense)
+✓ Server-side RLS policies still active
+✓ No sensitive data exposed
+✓ Auth tokens remain secure
+
+
+ROLLBACK (if needed):
+──────────────────
+
+To remove this feature:
+1. Remove handleCardClick from LocationCard.tsx
+2. Remove auth checks from Index.tsx buttons
+3. Convert to simple <Link> components
+
+
+STATUS: ✅ COMPLETE & TESTED
+
+The feature is ready for production use!
+
+═════════════════════════════════════════════════════════════════════════════
+

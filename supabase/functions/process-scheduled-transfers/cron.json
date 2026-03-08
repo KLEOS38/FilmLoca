@@ -1,0 +1,4 @@
+{
+  "cron": "0 */6 * * *",
+  "description": "Process scheduled transfers every 6 hours"
+}

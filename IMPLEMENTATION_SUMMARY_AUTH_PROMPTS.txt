@@ -1,0 +1,305 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║         ✅ FEATURE IMPLEMENTED: Authentication Prompts                    ║
+║                                                                            ║
+║    Non-signed-in users clicking featured properties see prompts           ║
+║    to sign in or sign up                                                  ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+FEATURE OVERVIEW:
+─────────────────
+
+When an UNAUTHENTICATED user tries to:
+  ✓ Click on a featured property
+  ✓ Click "View all" locations
+  ✓ Click "Browse Locations"
+  ✓ Click "List Your Property"
+
+They will see:
+  1. Error toast notification with helpful message
+  2. Redirect to sign in page (/auth?tab=signin)
+  3. Option to sign up if they don't have account
+
+When an AUTHENTICATED user tries the same actions:
+  → They navigate normally without any interruption
+
+
+FILES MODIFIED:
+───────────────
+
+1. src/components/LocationCard.tsx
+   ├─ Added useAuth() hook
+   ├─ Added useNavigate() hook
+   ├─ Added handleCardClick() function
+   └─ Added click handler to property card Link
+
+2. src/pages/Index.tsx (Homepage)
+   ├─ Added useAuth() hook
+   ├─ Added useNavigate() hook
+   ├─ Updated "Browse Locations" button
+   ├─ Updated "View all" link
+   └─ Updated "List Your Property" button
+
+
+TOAST MESSAGES:
+────────────────
+
+Action                          | Message
+────────────────────────────────────────────────────────────────
+Click featured property         | "Please sign in to view property details"
+Click "View all"                | "Please sign in to view all locations"
+Click "Browse Locations"        | "Please sign in to browse locations"
+Click "List Your Property"      | "Please sign in to list your property"
+
+
+CODE IMPLEMENTATION:
+────────────────────
+
+Pattern 1: Link with Click Handler (LocationCard)
+───────────────────────────────────────────────────
+const handleCardClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  if (!user) {
+    e.preventDefault();
+    toast.error("Please sign in to view property details");
+    navigate("/auth?tab=signin");
+    return;
+  }
+};
+
+<Link to={`/locations/${location.id}`} onClick={handleCardClick}>
+  {/* Card content */}
+</Link>
+
+
+Pattern 2: Button with Click Handler (Index)
+──────────────────────────────────────────────
+<Button
+  onClick={() => {
+    if (!user) {
+      toast.error("Please sign in to browse locations");
+      navigate("/auth?tab=signin");
+    } else {
+      navigate("/locations");
+    }
+  }}
+>
+  Browse Locations
+</Button>
+
+
+DEPENDENCIES USED:
+──────────────────
+
+✓ useAuth()
+  - From: @/contexts/AuthContext
+  - Provides: user object (null if not signed in)
+
+✓ useNavigate()
+  - From: react-router-dom
+  - Used: Programmatic navigation to auth page
+
+✓ toast.error()
+  - From: sonner
+  - Used: Display error notifications
+
+
+USER FLOW:
+──────────
+
+UNAUTHENTICATED USER:
+
+  Homepage loaded (user not signed in)
+         ↓
+  User sees featured properties
+         ↓
+  User clicks property card
+         ↓
+  Middleware checks: if (!user)
+         ↓
+  Toast shown: "Please sign in..."
+         ↓
+  Redirected to /auth?tab=signin
+         ↓
+  User signs in/signs up
+         ↓
+  Can now access all features
+
+
+AUTHENTICATED USER:
+
+  Homepage loaded (user signed in)
+         ↓
+  User sees featured properties
+         ↓
+  User clicks property card
+         ↓
+  Middleware checks: if (!user) → FALSE (user exists)
+         ↓
+  Navigation proceeds normally
+         ↓
+  Property detail page loads
+         ↓
+  No interruption
+
+
+TESTING INSTRUCTIONS:
+──────────────────────
+
+Test Case 1: Unauthenticated User - Featured Property
+══════════════════════════════════════════════════════
+Steps:
+  1. Open app in private/incognito window
+  2. Homepage loads
+  3. Click on featured property card
+
+Expected:
+  ✓ Toast appears: "Please sign in to view property details"
+  ✓ Redirect to /auth?tab=signin
+  ✓ Auth form displayed
+  ✓ Can sign in or sign up
+
+Result: PASS/FAIL: ___________
+
+
+Test Case 2: Unauthenticated User - Browse Button
+═════════════════════════════════════════════════
+Steps:
+  1. Open app (not signed in)
+  2. Click "Browse Locations" button
+
+Expected:
+  ✓ Toast appears: "Please sign in to browse locations"
+  ✓ Redirect to /auth?tab=signin
+  ✓ Can proceed to sign up
+
+Result: PASS/FAIL: ___________
+
+
+Test Case 3: Authenticated User - Featured Property
+════════════════════════════════════════════════════
+Steps:
+  1. Sign in to app
+  2. Go to homepage
+  3. Click featured property
+
+Expected:
+  ✓ NO toast appears
+  ✓ Navigate directly to property detail page
+  ✓ Property information loads
+  ✓ Smooth user experience
+
+Result: PASS/FAIL: ___________
+
+
+Test Case 4: Authenticated User - Browse Button
+════════════════════════════════════════════════
+Steps:
+  1. Sign in to app
+  2. Click "Browse Locations"
+
+Expected:
+  ✓ NO toast appears
+  ✓ Navigate to /locations page
+  ✓ Can filter and browse properties
+  ✓ No interruption
+
+Result: PASS/FAIL: ___________
+
+
+FEATURES PROTECTED:
+────────────────────
+
+✓ Featured Property Cards (click to view details)
+✓ "View all" Locations Link
+✓ "Browse Locations" Button (Hero)
+✓ "List Your Property" Button (CTA)
+
+FEATURES NOT PROTECTED:
+────────────────────────
+
+✓ View Homepage
+✓ See Featured Property Cards (can see them, can't click)
+✓ View How It Works Section
+✓ View Trust & Safety Section
+✓ Click "Sign Up" Buttons
+✓ View About/Safety Pages
+
+
+BENEFITS:
+──────────
+
+✓ Ensures only authenticated users access property details
+✓ Guides users to sign in when they try to perform actions
+✓ Clear error messages explain what's needed
+✓ Improves conversion by prompting signup
+✓ Better user experience with helpful feedback
+
+
+ROLLBACK INSTRUCTIONS (if needed):
+──────────────────────────────────
+
+To remove this feature:
+
+1. In LocationCard.tsx:
+   - Remove handleCardClick function
+   - Remove onClick={handleCardClick} from Link
+   - Change Link back to simple navigation
+
+2. In Index.tsx:
+   - Remove auth checks from button onClick handlers
+   - Convert Button components back to Link components
+   - Remove useAuth() and useNavigate() imports
+
+
+VERSION:
+─────────
+
+Feature Version: 1.0
+Implementation Date: 2024
+Status: ✅ Complete and Ready for Testing
+
+
+DOCUMENTATION:
+────────────────
+
+See: FEATURE_AUTHENTICATION_PROMPTS.md (detailed documentation)
+
+
+NEXT STEPS:
+────────────
+
+1. ✓ Review code changes in LocationCard.tsx
+2. ✓ Review code changes in Index.tsx
+3. ✓ Run through test cases above
+4. ✓ Test in different browsers
+5. ✓ Verify toast messages appear correctly
+6. ✓ Verify redirects work properly
+7. ✓ Test signin/signup flow after redirect
+8. ✓ Verify authenticated users aren't affected
+9. ✓ Check console for any errors
+10. ✓ Deploy to production
+
+
+SUPPORT:
+─────────
+
+For issues or questions:
+
+1. Check browser console for errors
+2. Verify AuthContext is working (check useAuth() hook)
+3. Verify sonner/toast is installed and configured
+4. Check that /auth?tab=signin route exists
+5. Verify react-router is properly configured
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+Feature Implementation Complete! ✅
+
+The authentication prompt system is now active. Users who are not signed in 
+will be prompted to sign in when trying to access featured properties or 
+other authenticated features.
+
+═════════════════════════════════════════════════════════════════════════════
+

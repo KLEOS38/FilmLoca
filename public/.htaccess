@@ -1,0 +1,73 @@
+
+# Enable the rewrite engine
+RewriteEngine On
+
+# This is important for SPA routing to work properly
+# Redirect all requests that are not to existing files or directories
+# to the index.html file
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+
+# Set MIME types
+AddType application/javascript .js
+AddType text/css .css
+AddType image/svg+xml .svg
+AddType application/manifest+json .webmanifest
+AddType application/manifest+json .json
+
+# Enable Gzip compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml application/xml application/xhtml+xml text/css application/javascript application/x-javascript application/json application/manifest+json
+</IfModule>
+
+# Set browser caching
+<IfModule mod_expires.c>
+  ExpiresActive On
+  
+  # Images
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+  
+  # Video
+  ExpiresByType video/mp4 "access plus 1 year"
+  ExpiresByType video/mpeg "access plus 1 year"
+  
+  # CSS, JavaScript
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType text/javascript "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+  
+  # Others
+  ExpiresByType application/pdf "access plus 1 month"
+  ExpiresByType application/x-shockwave-flash "access plus 1 month"
+  ExpiresByType application/manifest+json "access plus 1 week"
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+  # Prevent clickjacking
+  Header always append X-Frame-Options SAMEORIGIN
+  
+  # Prevent MIME-sniffing
+  Header always append X-Content-Type-Options nosniff
+  
+  # Enable XSS protection
+  Header always append X-XSS-Protection "1; mode=block"
+  
+  # Allow service worker to run properly
+  <FilesMatch "sw\.js$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  
+  # Add proper security for manifest.json
+  <FilesMatch "manifest\.json$">
+    Header set Content-Type "application/manifest+json"
+  </FilesMatch>
+</IfModule>

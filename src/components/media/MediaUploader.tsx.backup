@@ -1,0 +1,297 @@
+
+import React, { useState, useCallback } from 'react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { X, Upload, Image, Video, FileText } from "lucide-react";
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+interface MediaFile {
+  id: string;
+  file: File;
+  preview: string;
+  type: 'image' | 'video' | 'document';
+  uploadProgress: number;
+  uploaded: boolean;
+  url?: string;
+}
+
+interface MediaUploaderProps {
+  onUploadComplete?: (urls: string[]) => void;
+  onFilesUpdate?: (files: MediaFile[]) => void;
+  maxFiles?: number;
+  acceptedTypes?: string[];
+  bucket?: string;
+  mockMode?: boolean; // Add mock mode for testing
+}
+
+const MediaUploader = ({ 
+  onUploadComplete, 
+  onFilesUpdate,
+  maxFiles = 999, // Remove file limit restrictions
+  acceptedTypes = ['image/*', 'video/*'],
+  bucket = 'property-media',
+  mockMode = true // Enable mock mode by default for testing
+}: MediaUploaderProps) => {
+  const [files, setFiles] = useState<MediaFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const getFileType = (file: File): 'image' | 'video' | 'document' => {
+    if (file.type.startsWith('image/')) return 'image';
+    if (file.type.startsWith('video/')) return 'video';
+    return 'document';
+  };
+
+  const createPreview = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        const url = URL.createObjectURL(file);
+        resolve(url);
+      } else {
+        resolve('');
+      }
+    });
+  };
+
+  const uploadFiles = useCallback(async (filesToUpload?: MediaFile[]) => {
+    const currentFiles = filesToUpload || files;
+    console.log('uploadFiles called with files:', currentFiles.length);
+    if (currentFiles.length === 0) {
+      console.log('No files to upload');
+      return;
+    }
+    
+    setIsUploading(true);
+    const uploadedUrls: string[] = [];
+
+    try {
+      console.log('Starting upload process...');
+      for (const mediaFile of currentFiles) {
+        console.log('Processing file:', mediaFile.id, mediaFile.file.name, 'uploaded:', mediaFile.uploaded);
+        if (mediaFile.uploaded) {
+          console.log('File already uploaded, using existing URL');
+          uploadedUrls.push(mediaFile.url!);
+          continue;
+        }
+
+        // Update progress
+        setFiles(prev => prev.map(f => 
+          f.id === mediaFile.id ? { ...f, uploadProgress: 50 } : f
+        ));
+
+        let fileUrl: string;
+
+        if (mockMode) {
+          // Mock mode: use the preview URL as the uploaded URL
+          fileUrl = mediaFile.preview;
+          
+          // Simulate upload delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          // Real mode: upload to Supabase
+          const fileExt = mediaFile.file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+          const filePath = `${bucket}/${fileName}`;
+
+          const { data, error } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, mediaFile.file);
+
+          if (error) throw error;
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
+
+          fileUrl = publicUrl;
+        }
+
+        uploadedUrls.push(fileUrl);
+
+        // Update file as uploaded
+        setFiles(prev => prev.map(f => 
+          f.id === mediaFile.id ? { 
+            ...f, 
+            uploadProgress: 100, 
+            uploaded: true, 
+            url: fileUrl 
+          } : f
+        ));
+      }
+
+      // Call the callback with all uploaded URLs
+      console.log('Upload completed, URLs:', uploadedUrls);
+      if (onUploadComplete) {
+        console.log('Calling onUploadComplete with URLs:', uploadedUrls);
+        onUploadComplete(uploadedUrls);
+      }
+      
+      // Also call onFilesUpdate with the current files
+      if (onFilesUpdate) {
+        console.log('Calling onFilesUpdate with files:', currentFiles);
+        onFilesUpdate(currentFiles);
+      }
+
+      toast.success(`${uploadedUrls.length} files uploaded successfully!`);
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload files. Please try again.');
+    } finally {
+      console.log('Upload process finished');
+      setIsUploading(false);
+    }
+  }, [files, mockMode, bucket, onUploadComplete, onFilesUpdate]);
+
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    
+    if (selectedFiles.length === 0) return;
+    
+    console.log('Files selected:', selectedFiles.length);
+    
+    // No file count restrictions - users can add as many files as they want
+    const newFiles: MediaFile[] = [];
+    
+    for (const file of selectedFiles) {
+      // No file size limit
+      console.log('Processing file:', file.name, file.type, file.size);
+
+      const preview = await createPreview(file);
+      const mediaFile: MediaFile = {
+        id: Math.random().toString(36).substr(2, 9),
+        file,
+        preview,
+        type: getFileType(file),
+        uploadProgress: 0,
+        uploaded: false
+      };
+      
+      newFiles.push(mediaFile);
+    }
+
+    console.log('New files created:', newFiles.length);
+    // Replace all files instead of adding to existing ones
+    setFiles(newFiles);
+    console.log('Total files after update:', newFiles.length);
+    
+    // Auto-upload new files after state update
+    setTimeout(() => {
+      console.log('Starting auto-upload...');
+      uploadFiles(newFiles);
+    }, 100);
+  }, [uploadFiles]);
+
+  const removeFile = (id: string) => {
+    setFiles(prev => {
+      const fileToRemove = prev.find(f => f.id === id);
+      if (fileToRemove?.preview) {
+        URL.revokeObjectURL(fileToRemove.preview);
+      }
+      return prev.filter(f => f.id !== id);
+    });
+  };
+
+
+  const getFileIcon = (type: 'image' | 'video' | 'document') => {
+    switch (type) {
+      case 'image': return <Image className="w-4 h-4" />;
+      case 'video': return <Video className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="media-upload" className="sr-only">Upload Media Files</Label>
+            <input
+              id="media-upload"
+              type="file"
+              multiple
+              accept={acceptedTypes.join(',')}
+              onChange={handleFileSelect}
+              className="hidden"
+              title="Upload Media Files"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => document.getElementById('media-upload')?.click()}
+              className="w-full h-12 border-2 border-gray-200 hover:border-red-500 focus:border-red-500 transition-colors cursor-pointer flex items-center justify-center text-center font-semibold"
+            >
+              Upload Media Files
+            </Button>
+            {isUploading && (
+              <p className="text-xs text-blue-600 mt-1">
+                ⬆️ Uploading files automatically...
+              </p>
+            )}
+          </div>
+
+          {files.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Selected Files</h4>
+              <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
+                {files.map((mediaFile) => (
+                  <div key={mediaFile.id} className="flex items-center space-x-3 p-2 border rounded-lg">
+                    <div className="flex-shrink-0">
+                      {mediaFile.type === 'image' && mediaFile.preview ? (
+                        <img 
+                          src={mediaFile.preview} 
+                          alt={mediaFile.file.name}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      ) : mediaFile.type === 'video' && mediaFile.preview ? (
+                        <video 
+                          src={mediaFile.preview}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+                          {getFileIcon(mediaFile.type)}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{mediaFile.file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(mediaFile.file.size / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                      
+                      {mediaFile.uploadProgress > 0 && !mediaFile.uploaded && (
+                        <Progress value={mediaFile.uploadProgress} className="mt-1 h-1" />
+                      )}
+                      
+                      {mediaFile.uploaded && (
+                        <p className="text-xs text-green-600 mt-1">Uploaded</p>
+                      )}
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFile(mediaFile.id)}
+                      disabled={isUploading}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default MediaUploader;

@@ -1,0 +1,231 @@
+import React, { useState, useMemo } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { HelpCircle, MessageSquare, Phone, Mail, Search } from "lucide-react";
+
+const HelpCenter = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const faqs = [
+    {
+      question: "How do I book a location?",
+      answer: "To book a location, browse our listings and select one you're interested in. Check availability for your dates, then click \"Book Now\". The property owner will review your request and confirm if the location is available."
+    },
+    {
+      question: "What payment methods do you accept?",
+      answer: "We accept all major credit cards. We also support bank transfers for certain slates."
+    },
+    {
+      question: "How do I list my property?",
+      answer: "To list your property, create an account and click on \"List Your Property\" in navigation. Follow the step-by-step process to add details, photos, pricing, and availability for your location."
+    },
+    {
+      question: "How do I cancel a slate?",
+      answer: "To cancel a slate, go to your account dashboard and select the slate you wish to cancel. Follow the cancellation process, and your refund will be processed according to applicable cancellation policy."
+    },
+    {
+      question: "Is my property suitable for a film production?",
+      answer: "We accept a diverse range of locations. Generally, properties with unique features, good lighting, spacious rooms, reliable utilities (power and water), and easy access for crew/equipment are highly sought after."
+    },
+    {
+      question: "What kind of filming projects do you host?",
+      answer: "We host various filming projects."
+    },
+    {
+      question: "How is rental price determined for filming?",
+      answer: "Prices are set by the property owners."
+    },
+    {
+      question: "Can I crew move or alter furniture and decor?",
+      answer: "Minor adjustments, like moving small pieces of furniture, are generally permitted within the agreed-upon filming area. However, all significant furniture removal, structural alterations, painting, or drilling must be pre-approved by host and documented in the agreement. Everything must be returned to its original state afterward."
+    },
+    {
+      question: "As a host, do I need to be present during the shoot?",
+      answer: "While some hosts prefer to be present, you may designate a trusted representative or property manager to be on-site. We highly recommend having someone present to ensure the smooth execution of the shoot and to protect your property."
+    },
+    {
+      question: "What about power supply and generator use?",
+      answer: "This is a required provision by property owners. However, if the production should want to bring their own backup power supply, that is up to them."
+    },
+    {
+      question: "What are the terms for cancellation or overstaying?",
+      answer: "Cancellation is as stated in cancellation policy. If the production overstays the booked time, an overtime fee (typically a high hourly rate) will be applied, usually calculated from the half-day or full-day rate."
+    },
+    {
+      question: "Are there restrictions on content that can be filmed?",
+      answer: "Not typically. However, it is advisable to confirm with the host."
+    },
+    {
+      question: "What happens if filming causes accidental damage to the premises or my personal property?",
+      answer: "The production company is liable for damages to the premises or any personal property."
+    },
+    {
+      question: "What security measures will be in place during the shoot?",
+      answer: "For the duration of the shoot, the production is required to provide its own professional security personnel (separate from the property's regular guards, if any)."
+    },
+    {
+      question: "What is FUP (Filmloca Usage Protection)?",
+      answer: (
+        <>
+          FUP is a goodwill program that helps cover accidental damages during approved Filmloca bookings. There are separate FUP programs for Property Owners and Filmmakers. Visit the{" "}
+          <Link to="/fup-program" className="text-nollywood-primary hover:underline">FUP page</Link>
+          {" "}to learn more about eligibility, coverage, and requirements for your role.
+        </>
+      )
+    },
+    {
+      question: "How do I apply for FUP coverage?",
+      answer: "FUP coverage is automatically available to eligible users. Property owners need 5+ successful bookings, while filmmakers need 10+ successful slates. Check your eligibility and view full program details on the FUP page."
+    }
+  ];
+
+  // Filter FAQs based on search query
+  const filteredFaqs = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return faqs;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    return faqs.filter(faq => 
+      faq.question.toLowerCase().includes(query) || 
+      faq.answer.toLowerCase().includes(query)
+    );
+  }, [searchQuery, faqs]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Search is handled by the filteredFaqs useMemo
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>Help Center | Film Loca</title>
+        <meta name="description" content="Get help with slating locations, managing your listings, or any other questions about Film Loca." />
+      </Helmet>
+      
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        
+        <main className="flex-grow">
+          {/* Help Categories */}
+          <section className="py-12">
+            <div className="container mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="p-6">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="bg-nollywood-primary/10 p-4 rounded-full mb-4">
+                      <HelpCircle className="h-8 w-8 text-nollywood-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3">Frequently Asked Questions</h3>
+                    <p className="text-muted-foreground mb-4">Find quick answers to common questions about slating and listing locations.</p>
+                    <Button variant="outline" onClick={() => document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth' })}>
+                      Browse FAQs
+                    </Button>
+                  </div>
+                </Card>
+                
+                <Card className="p-6">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="bg-nollywood-secondary/10 p-4 rounded-full mb-4">
+                      <MessageSquare className="h-8 w-8 text-nollywood-secondary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3">Contact Support</h3>
+                    <p className="text-muted-foreground mb-4">Need more help? Our support team is ready to assist you with any issues.</p>
+                    <Button variant="outline" onClick={() => window.location.href = 'mailto:hello@filmloca.com'}>
+                      hello@filmloca.com
+                    </Button>
+                  </div>
+                </Card>
+                
+                <Card className="p-6">
+                  <div className="flex flex-col items-center text-center">
+                    <div className="bg-nollywood-accent/20 p-4 rounded-full mb-4">
+                      <Phone className="h-8 w-8 text-nollywood-accent" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3">Call Us</h3>
+                    <p className="text-muted-foreground mb-4">Talk to our team directly for urgent matters or complex questions.</p>
+                    <Button variant="outline" onClick={() => window.location.href = 'tel:+2348001234567'}>
+                      +234 000 000 0000
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </section>
+          
+          {/* FAQ Section */}
+          <section id="faq-section" className="py-12">
+            <div className="container mx-auto px-4">
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-bold mb-4">Frequently Asked Questions</h2>
+                  <p className="text-muted-foreground mb-6">
+                    {searchQuery ? `Found ${filteredFaqs.length} result(s) for "${searchQuery}"` : 'Find answers to common questions about Film Loca'}
+                  </p>
+                  
+                  {/* Search Box */}
+                  <div className="max-w-xl mx-auto mb-8">
+                    <form onSubmit={handleSearch} className="relative">
+                      <Input 
+                        type="text" 
+                        placeholder="Search for help topics..." 
+                        className="pr-10 py-6 text-lg"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                      <Button type="submit" className="absolute right-1 top-1/2 transform -translate-y-1/2">
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+                
+                {filteredFaqs.length > 0 ? (
+                  <Accordion type="single" collapsible className="w-full">
+                    {filteredFaqs.map((faq, index) => (
+                      <AccordionItem key={index} value={`item-${index}`}>
+                        <AccordionTrigger className="text-left">
+                          {faq.question}
+                        </AccordionTrigger>
+                        <AccordionContent className="text-muted-foreground">
+                          {faq.answer}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <div className="text-center py-12">
+                    <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No results found</h3>
+                    <p className="text-muted-foreground mb-4">
+                      We couldn't find any FAQs matching your search for "{searchQuery}"
+                    </p>
+                    <Button variant="outline" onClick={() => setSearchQuery('')}>
+                      Clear search
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </main>
+        
+        <Footer />
+      </div>
+    </>
+  );
+};
+
+export default HelpCenter;

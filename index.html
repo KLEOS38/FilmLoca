@@ -1,0 +1,237 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Film Loca | Find Perfect Filming Venues Worldwide</title>
+    <meta name="description" content="Discover verified filming locations across the globe for your film production. Browse houses, apartments, studios and unique spaces with real filmmaker reviews." />
+    <meta name="keywords" content="film locations, movie locations, filming venues, global filming venues, film production spaces, worldwide locations" />
+    <meta name="author" content="Film Loca" />
+    
+    <!-- Canonical URL -->
+    <meta rel="canonical" href="https://www.filmloca.com" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Film Loca | Find Perfect Filming Venues Worldwide" />
+    <meta property="og:description" content="Discover verified filming locations across the globe for your production. Browse houses, apartments, studios and unique spaces with real filmmaker reviews." />
+    <meta property="og:image" content="https://www.filmloca.com/og-image.jpg" />
+    <meta property="og:url" content="https://www.filmloca.com" />
+    <meta property="og:site_name" content="Film Loca" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@film_loca" />
+    <meta name="twitter:title" content="Film Loca | Find Perfect Filming Venues Worldwide" />
+    <meta name="twitter:description" content="Discover verified filming locations across the globe for your production. Browse houses, apartments, studios and unique spaces with real filmmaker reviews." />
+    <meta property="twitter:image" content="https://www.filmloca.com/twitter-image.jpg" />
+    
+    <!-- Mobile specific metas -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#F05A28" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Film Loca" />
+    <meta name="apple-mobile-web-app-title" content="Film Loca" />
+    
+    <!-- Favicon - Primary browser icon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS icons - using favicon.ico -->
+    <link rel="apple-touch-icon" href="/favicon.ico" />
+    
+    <!-- iOS splash screens -->
+    <link rel="apple-touch-startup-image" href="/icons/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1536x2048.png" media="(min-device-width: 768px) and (max-device-width: 1024px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-1668x2224.png" media="(min-device-width: 834px) and (max-device-width: 834px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/icons/splash-2048x2732.png" media="(min-device-width: 1024px) and (max-device-width: 1024px) and (-webkit-device-pixel-ratio: 2)" />
+    
+    <!-- Preload critical assets -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Critical inline styles to prevent layout shift -->
+    <style>
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        scroll-padding-top: 0 !important;
+        overflow-x: hidden;
+      }
+      #root {
+        margin: 0 !important;
+        padding: 0 !important;
+        /* Let React app control height; individual pages use min-h-screen as needed */
+        min-height: auto;
+        width: 100% !important;
+      }
+      body {
+        position: relative;
+      }
+    </style>
+  </head>
+
+  <body style="margin: 0; padding: 0; overflow-x: hidden;">
+    <div id="root" style="margin: 0; padding: 0; width: 100%;"></div>
+    <!-- CRITICAL: Blocking script that runs BEFORE React -->
+    <script>
+      // CRITICAL: Prevent scroll restoration FIRST, before anything else
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      
+      // CRITICAL: Force scroll to top IMMEDIATELY, synchronously - BEFORE React loads
+      (function() {
+        var forceScroll = function() {
+          window.scrollTo(0, 0);
+          if (document.documentElement) {
+            document.documentElement.scrollTop = 0;
+          }
+          if (document.body) {
+            document.body.scrollTop = 0;
+          }
+        };
+        
+        forceScroll();
+        
+        // Also set scroll position on documentElement and body
+        if (document.documentElement) {
+          document.documentElement.style.scrollBehavior = 'auto';
+        }
+        if (document.body) {
+          document.body.style.scrollBehavior = 'auto';
+        }
+        
+        // Watch for scroll restoration attempts during initial load
+        var scrollWatcher = setInterval(function() {
+          var currentScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+          if (currentScroll > 0) {
+            forceScroll();
+          }
+        }, 10);
+        
+        // Stop watching after 2 seconds to allow normal scrolling
+        setTimeout(function() {
+          clearInterval(scrollWatcher);
+        }, 2000);
+        
+        // Also check after window load (browser might restore scroll here)
+        window.addEventListener('load', function() {
+          setTimeout(function() {
+            var currentScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            if (currentScroll > 0) {
+              forceScroll();
+            }
+          }, 0);
+          setTimeout(function() {
+            var currentScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            if (currentScroll > 0) {
+              forceScroll();
+            }
+          }, 100);
+        }, { once: true });
+      })();
+    </script>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Additional scroll prevention after React loads
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      
+      // Force scroll to top IMMEDIATELY, synchronously
+      window.scrollTo(0, 0);
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0;
+      }
+      if (document.body) {
+        document.body.scrollTop = 0;
+      }
+      
+      // Prevent any scroll restoration attempts
+      window.addEventListener('beforeunload', () => {
+        window.scrollTo(0, 0);
+        if ('scrollRestoration' in history) {
+          history.scrollRestoration = 'manual';
+        }
+      });
+      
+      // Force scroll to top on every possible event
+      const forceScrollTop = () => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      };
+      
+      // Multiple event listeners to catch all scenarios
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', forceScrollTop, { once: true });
+      } else {
+        forceScrollTop();
+      }
+      
+      window.addEventListener('load', forceScrollTop, { once: true });
+      
+      // Also force on next tick
+      setTimeout(forceScrollTop, 0);
+      setTimeout(forceScrollTop, 10);
+      setTimeout(forceScrollTop, 50);
+    </script>
+    <script>
+      // Register service worker for PWA functionality
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(error => {
+              console.log('ServiceWorker registration failed: ', error);
+            });
+        });
+      }
+      
+      // Add to Home Screen prompt handler
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the mini-infobar from appearing on mobile
+        e.preventDefault();
+        // Stash the event so it can be triggered later
+        deferredPrompt = e;
+        // Update UI to notify the user they can install the PWA
+        // You can add your custom UI logic here
+      });
+      
+      // Function to show the install prompt (call this from a button click)
+      function showInstallPrompt() {
+        if (deferredPrompt) {
+          // Show the install prompt
+          deferredPrompt.prompt();
+          // Wait for the user to respond to the prompt
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('User accepted the install prompt');
+            } else {
+              console.log('User dismissed the install prompt');
+            }
+            // Clear the saved prompt since it can't be used again
+            deferredPrompt = null;
+          });
+        }
+      }
+    </script>
+  </body>
+</html>

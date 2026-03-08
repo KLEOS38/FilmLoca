@@ -1,0 +1,9 @@
+# cPanel Git Deployment Configuration
+# This file tells cPanel where to place your files when you push
+
+deployment:
+  type: git
+  branch: main
+  root: public_html
+  # Optional: specify a subdirectory within root
+  # subdirectory: film-loca-app

@@ -1,0 +1,212 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                    5-MINUTE BOOKING FIX - VISUAL GUIDE                     ║
+║                                                                            ║
+║              Copy SQL → Paste in Supabase → Click Run → Done              ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+WHAT'S WRONG:
+─────────────
+Your bookings table has CONFLICTING RLS POLICIES (10+)
+These policies fight each other → booking fails
+
+HOW TO FIX:
+──────────
+Delete all conflicting policies → Create 5 clean policies → Done
+
+TIME: 5 MINUTES
+
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP-BY-STEP VISUAL GUIDE:
+
+┌─ STEP 1: Open Supabase ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  1. Go to: https://app.supabase.com                                        │
+│  2. Log in if needed                                                       │
+│  3. Click on your project (FILM-LOCA-APP)                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 2: Open SQL Editor ───────────────────────────────────────────────────┐
+│                                                                             │
+│  1. On the left sidebar, click: SQL Editor                                 │
+│     (It looks like: </> SQL Editor)                                        │
+│  2. Click: New Query (or + New Query)                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 3: Copy This SQL ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  Select all the text below and copy it (Ctrl+C):                           │
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │ DROP POLICY IF EXISTS "Allow service role inserts" ON bookings;      │ │
+│  │ DROP POLICY IF EXISTS "Service role full access" ON bookings;        │ │
+│  │ DROP POLICY IF EXISTS "service_role_insert_bookings" ON bookings;    │ │
+│  │ DROP POLICY IF EXISTS "service_role_select_bookings" ON bookings;    │ │
+│  │ DROP POLICY IF EXISTS "service_role_update_bookings" ON bookings;    │ │
+│  │ DROP POLICY IF EXISTS "user_select_own_bookings" ON bookings;        │ │
+│  │ DROP POLICY IF EXISTS "user_update_own_bookings" ON bookings;        │ │
+│  │ DROP POLICY IF EXISTS "Users can create their own bookings" ON bo... │ │
+│  │ DROP POLICY IF EXISTS "Users can delete their own bookings" ON bo... │ │
+│  │ DROP POLICY IF EXISTS "Users can view their own bookings" ON bookings│ │
+│  │                                                                       │ │
+│  │ ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;                     │ │
+│  │                                                                       │ │
+│  │ CREATE POLICY "service_role_full_access"                             │ │
+│  │     ON bookings FOR ALL TO service_role                              │ │
+│  │     USING (true) WITH CHECK (true);                                 │ │
+│  │                                                                       │ │
+│  │ CREATE POLICY "authenticated_insert_own_bookings"                    │ │
+│  │     ON bookings FOR INSERT TO authenticated                          │ │
+│  │     WITH CHECK (auth.uid() = user_id);                              │ │
+│  │                                                                       │ │
+│  │ CREATE POLICY "authenticated_select_own_bookings"                    │ │
+│  │     ON bookings FOR SELECT TO authenticated                          │ │
+│  │     USING (auth.uid() = user_id);                                   │ │
+│  │                                                                       │ │
+│  │ CREATE POLICY "authenticated_update_own_bookings"                    │ │
+│  │     ON bookings FOR UPDATE TO authenticated                          │ │
+│  │     USING (auth.uid() = user_id)                                    │ │
+│  │     WITH CHECK (auth.uid() = user_id);                              │ │
+│  │                                                                       │ │
+│  │ CREATE POLICY "authenticated_delete_own_bookings"                    │ │
+│  │     ON bookings FOR DELETE TO authenticated                          │ │
+│  │     USING (auth.uid() = user_id);                                   │ │
+│  │                                                                       │ │
+│  │ UPDATE properties SET is_published = true                            │ │
+│  │ WHERE is_published = false;                                          │ │
+│  │                                                                       │ │
+│  │ SELECT COUNT(*) FROM pg_policies WHERE tablename = 'bookings';      │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│  OR: See COPY_PASTE_FIX.md for the full SQL                               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 4: Paste in Supabase ─────────────────────────────────────────────────┐
+│                                                                             │
+│  1. Click in the SQL Editor text box (the white area)                      │
+│  2. Press Ctrl+V to paste the SQL                                         │
+│  3. You should see all the SQL code appear                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 5: Click RUN ─────────────────────────────────────────────────────────┐
+│                                                                             │
+│  1. Look for a blue button that says:                                      │
+│     "Run" or "Execute" or "▶ Run"                                          │
+│  2. Click it                                                               │
+│  3. Wait for it to complete...                                             │
+│                                                                             │
+│  Expected result at bottom:                                                │
+│    ┌───────────┐                                                          │
+│    │ count: 5  │  ← You want to see this!                                │
+│    └───────────┘                                                          │
+│                                                                             │
+│  If you see "5" → SUCCESS! ✅                                             │
+│  If you see error → Copy error and ask for help                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 6: Redeploy Function ────────────────────────────────────────────────┐
+│                                                                             │
+│  1. Open Terminal/Command Prompt                                           │
+│  2. Run:                                                                   │
+│     cd /Users/fortune./Documents/BRANDS/FILM-LOCA-APP                     │
+│  3. Run:                                                                   │
+│     supabase functions deploy create-payment                               │
+│  4. Wait for:                                                              │
+│     ✔ Function create-payment deployed successfully                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 7: Clear Browser Cache ──────────────────────────────────────────────┐
+│                                                                             │
+│  1. Open your app in browser                                               │
+│  2. Press F12 (opens DevTools)                                             │
+│  3. Right-click the refresh button (↻)                                     │
+│  4. Click: "Empty cache and hard refresh"                                  │
+│  5. Close DevTools (press F12 again)                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STEP 8: Test Booking ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  1. Go to your app                                                         │
+│  2. Click on any property                                                  │
+│  3. Set dates:                                                             │
+│     Check-in: Tomorrow                                                     │
+│     Check-out: 3 days from now                                             │
+│  4. Click "Book Now" button                                                │
+│                                                                             │
+│  Expected:                                                                 │
+│    ✅ Redirected to Paystack payment page                                 │
+│    ✅ No error messages                                                   │
+│                                                                             │
+│  If NOT redirected:                                                        │
+│    ❌ Check browser console (F12 → Console)                               │
+│    ❌ Copy error message                                                  │
+│    ❌ Check Supabase logs                                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+VERIFICATION QUERIES (Run these if something goes wrong):
+
+In Supabase SQL Editor, run ONE AT A TIME:
+
+  1. SELECT COUNT(*) FROM pg_policies WHERE tablename = 'bookings';
+     → Expected: 5
+
+  2. SELECT COUNT(*) FROM properties WHERE is_published = true;
+     → Expected: > 0
+
+  3. SELECT policyname FROM pg_policies WHERE tablename = 'bookings';
+     → Expected: List of 5 policy names
+
+═══════════════════════════════════════════════════════════════════════════════
+
+CHECKLIST:
+
+ ☐ Step 1: Opened Supabase Dashboard
+ ☐ Step 2: Clicked SQL Editor → New Query
+ ☐ Step 3: Copied the SQL code
+ ☐ Step 4: Pasted in Supabase
+ ☐ Step 5: Clicked Run → Saw "count: 5" ✅
+ ☐ Step 6: Redeployed function → Saw "deployed successfully" ✅
+ ☐ Step 7: Cleared browser cache
+ ☐ Step 8: Tested booking → Redirected to Paystack ✅
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING:
+
+  Problem: SQL shows error
+  → Check you copied ALL the text
+  → Try again or see COPY_PASTE_FIX.md
+
+  Problem: Booking still fails after fix
+  → Check browser console for error (F12)
+  → Check Supabase logs (Functions → create-payment → Logs)
+  → Verify PAYSTACK_SECRET_KEY is set in Settings → Functions → Secrets
+
+  Problem: Can't find where to click
+  → See screenshot in COPY_PASTE_FIX.md
+  → Or follow QUICK_FIX_RLS_CLEAN.md for more details
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TOTAL TIME: 5-7 MINUTES
+
+Then booking will work! ✅
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Ready? Start with STEP 1!
+
+Good luck! 🚀
+

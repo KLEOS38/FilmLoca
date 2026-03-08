@@ -1,0 +1,39 @@
+
+{
+  "name": "Film Loca",
+  "short_name": "FilmLoca",
+  "description": "Find Perfect Filming Venues Worldwide",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#F05A28",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
+    }
+  ],
+  "splash_pages": null,
+  "scope": "/",
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Browse Locations",
+      "short_name": "Locations",
+      "description": "Browse all filming locations",
+      "url": "/locations",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    },
+    {
+      "name": "List Your Property",
+      "short_name": "List Property",
+      "description": "Add your property as a filming location",
+      "url": "/list-property",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    }
+  ]
+}

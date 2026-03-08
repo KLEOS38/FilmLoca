@@ -1,0 +1,1354 @@
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Combobox } from "@/components/ui/combobox";
+import { Badge } from "@/components/ui/badge";
+import BedroomCounter from "@/components/ui/bedroom-counter";
+import MediaUploader from "@/components/media/MediaUploader";
+import { Loader2, Upload, X, ArrowLeft, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { updatePropertyBypassingTriggers } from "@/utils/databaseHelper";
+import {
+  extractOfficeSpaceFromRules,
+  addOfficeSpaceToRules,
+} from "@/utils/fixOfficeSpace";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { locationTypes, amenitiesList } from "@/data/propertyConstants";
+import {
+  getCountries,
+  getStatesByCountry,
+  getCitiesByState,
+  getCurrencyForCountry,
+} from "@/data/locations";
+import { DatabaseIntegrityManager } from "@/utils/databaseIntegrity";
+
+// Define proper interfaces
+interface Property {
+  id: string;
+  title: string;
+  property_type: string;
+  description: string;
+  price: number;
+  address: string;
+  country: string;
+  state: string;
+  city: string;
+  neighborhood?: string;
+  max_guests: number;
+  has_office_space?: boolean;
+  damage_deposit?: number;
+  rules?: string;
+  owner_id: string;
+  updated_at: string;
+  bathrooms?: number;
+  bedrooms?: number;
+  created_at: string;
+  is_featured: boolean;
+  is_published: boolean;
+  is_verified: boolean;
+  latitude?: number;
+  longitude?: number;
+  property_amenities: PropertyAmenity[];
+}
+
+interface PropertyImage {
+  id: string;
+  url: string;
+  is_primary: boolean;
+  property_id: string;
+}
+
+interface PropertyAmenity {
+  amenity_id: string;
+}
+
+const propertySchema = z.object({
+  title: z.string().min(1, { message: "Title is required" }),
+  type: z.string().min(1, { message: "Property type is required" }),
+  description: z
+    .string()
+    .min(1, { message: "Description is required" })
+    .refine(
+      (val) => {
+        const words = val
+          .trim()
+          .split(/\s+/)
+          .filter((word) => word.length > 0);
+        return words.length >= 10;
+      },
+      { message: "Description must be at least 10 words" },
+    ),
+  price: z.coerce.number().min(1, { message: "Price is required" }),
+  address: z
+    .string()
+    .min(5, { message: "Address must be at least 5 characters" }),
+  country: z.string().min(1, { message: "Country is required" }),
+  state: z.string().min(1, { message: "State is required" }),
+  city: z.string().min(1, { message: "City is required" }),
+  neighborhood: z.string().optional(),
+  number_of_rooms: z.coerce
+    .number()
+    .int()
+    .min(0, { message: "Number of rooms must be 0 or greater" })
+    .default(0),
+  has_office_space: z.boolean().default(false),
+  damage_deposit: z.coerce
+    .number()
+    .min(0, { message: "Damage deposit must be 0 or greater" })
+    .optional(),
+  rules: z.string().optional(),
+  amenities: z
+    .array(z.string())
+    .min(1, { message: "Please select at least one amenity" }),
+});
+
+type PropertyFormValues = z.infer<typeof propertySchema>;
+
+const EditPropertyPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [property, setProperty] = useState<Property | null>(null);
+  const [images, setImages] = useState<PropertyImage[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [pendingImageDeletions, setPendingImageDeletions] = useState<Set<string>>(new Set());
+
+  const form = useForm<PropertyFormValues>({
+    resolver: zodResolver(propertySchema),
+    defaultValues: {
+      title: "",
+      type: "",
+      description: "",
+      price: 0,
+      address: "",
+      country: "Nigeria",
+      state: "",
+      city: "",
+      neighborhood: "",
+      amenities: [],
+      number_of_rooms: 0,
+      has_office_space: false,
+      damage_deposit: undefined,
+      rules: "",
+    },
+  });
+
+  const [customPropertyType, setCustomPropertyType] = useState("");
+
+  // Location state - default to empty (same as ListPropertyPage)
+  const [selectedLocation, setSelectedLocation] = useState({
+    country: "",
+    state: "",
+    city: "",
+    neighborhood: "",
+  });
+
+  // Get available states and cities based on selected location (same as ListPropertyPage)
+  const availableStates = useMemo(() => {
+    return selectedLocation.country
+      ? getStatesByCountry(selectedLocation.country)
+      : [];
+  }, [selectedLocation.country]);
+  
+  const availableCities = useMemo(() => {
+    return selectedLocation.country && selectedLocation.state
+      ? getCitiesByState(selectedLocation.country, selectedLocation.state)
+      : [];
+  }, [selectedLocation.country, selectedLocation.state]);
+
+  // City options: include current value when not in list (e.g. saved custom city) so it displays in the combobox
+  const cityOptions = useMemo(() => {
+    if (!selectedLocation.city?.trim()) return availableCities;
+    const trimmed = selectedLocation.city.trim();
+    if (availableCities.includes(trimmed)) return availableCities;
+    return [trimmed, ...availableCities];
+  }, [availableCities, selectedLocation.city]);
+
+  // Debug logging to track state changes
+  useEffect(() => {
+    console.log("📍 Location changed:", {
+      country: selectedLocation.country,
+      state: selectedLocation.state,
+      city: selectedLocation.city,
+      availableStates: availableStates.length,
+      availableCities: availableCities.length,
+    });
+  }, [selectedLocation, availableStates, availableCities]);
+
+  const [availableAmenities, setAvailableAmenities] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+
+  // Fetch amenities from the database
+  useEffect(() => {
+    const fetchAmenities = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("amenities")
+          .select("id, name")
+          .order("name", { ascending: true });
+
+        if (error) {
+          console.error("Error fetching amenities:", error);
+          return;
+        }
+
+        if (data) {
+          setAvailableAmenities(data);
+        }
+      } catch (error) {
+        console.error("Error fetching amenities:", error);
+      }
+    };
+
+    fetchAmenities();
+  }, []);
+
+  const propertyTypes = [
+    "Residential Properties",
+    "Duplex",
+    "Apartment",
+    "Bungalow",
+    "Villa",
+    "Mansion",
+    "Penthouse",
+    "Commercial Properties",
+    "Office Building",
+    "Studio Space",
+    "Warehouse",
+    "Restaurant / Bar",
+    "Hotel / Guesthouse",
+    "Retail Space",
+    "Hospital / Clinic",
+    "Specialty Locations",
+    "Park / Garden",
+    "Beach House",
+    "Rooftop / Terrace",
+    "Event Hall / Banquet Hall",
+    "Other",
+  ];
+
+  const nigerianStates = [
+    "Abia",
+    "Adamawa",
+    "Akwa Ibom",
+    "Anambra",
+    "Bauchi",
+    "Bayelsa",
+    "Benue",
+    "Borno",
+    "Cross River",
+    "Delta",
+    "Ebonyi",
+    "Edo",
+    "Ekiti",
+    "Enugu",
+    "Gombe",
+    "Imo",
+    "Jigawa",
+    "Kaduna",
+    "Kano",
+    "Katsina",
+    "Kebbi",
+    "Kogi",
+    "Kwara",
+    "Lagos",
+    "Nasarawa",
+    "Niger",
+    "Ogun",
+    "Ondo",
+    "Osun",
+    "Oyo",
+    "Plateau",
+    "Rivers",
+    "Sokoto",
+    "Taraba",
+    "Yobe",
+    "Zamfara",
+    "FCT",
+  ];
+
+  const nigerianCities = {
+    Lagos: [
+      "Lagos Island",
+      "Lagos Mainland",
+      "Ikeja",
+      "Victoria Island",
+      "Lekki",
+      "Surulere",
+      "Yaba",
+      "Ikoyi",
+    ],
+    Abuja: [
+      "Garki",
+      "Wuse",
+      "Maitama",
+      "Asokoro",
+      "Utako",
+      "Jabi",
+      "Gwarinpa",
+      "Kubwa",
+    ],
+    Rivers: [
+      "Port Harcourt",
+      "Obio-Akpor",
+      "Eleme",
+      "Oyigbo",
+      "Okrika",
+      "Degema",
+      "Bonny",
+      "Opobo",
+    ],
+    Kano: [
+      "Kano Municipal",
+      "Nassarawa",
+      "Fagge",
+      "Dala",
+      "Gwale",
+      "Tarauni",
+      "Ungogo",
+      "Kumbotso",
+    ],
+    Delta: [
+      "Asaba",
+      "Warri",
+      "Sapele",
+      "Ughelli",
+      "Agbor",
+      "Oghara",
+      "Koko",
+      "Burutu",
+    ],
+    Oyo: [
+      "Ibadan",
+      "Ogbomoso",
+      "Oyo",
+      "Iseyin",
+      "Kishi",
+      "Saki",
+      "Eruwa",
+      "Lanlate",
+    ],
+    Enugu: [
+      "Enugu",
+      "Nsukka",
+      "Oji River",
+      "Udi",
+      "Ezeagu",
+      "Igbo Etiti",
+      "Isi Uzo",
+      "Nkanu East",
+    ],
+  };
+
+  const internationalCities = [
+    "New York",
+    "Los Angeles",
+    "London",
+    "Paris",
+    "Tokyo",
+    "Sydney",
+    "Toronto",
+    "Berlin",
+    "Amsterdam",
+    "Barcelona",
+    "Rome",
+    "Dubai",
+    "Singapore",
+    "Hong Kong",
+    "Mumbai",
+    "Cairo",
+  ];
+
+  useEffect(() => {
+    if (id && user) {
+      loadProperty();
+    }
+  }, [id, user]); // Remove loadProperty dependency to prevent infinite loop
+
+  const loadProperty = async () => {
+    try {
+      setLoading(true);
+
+      // Load property details
+      console.log("Loading property with ID:", id, "for user:", user?.id);
+      const { data: propertyData, error: propertyError } = await supabase
+        .from("properties")
+        .select(
+          `
+          *,
+          property_images(*),
+          property_amenities(amenity_id)
+        `,
+        )
+        .eq("id", id)
+        .eq("owner_id", user?.id)
+        .single();
+
+      console.log("Property query result:", { propertyData, propertyError });
+
+      if (propertyError) {
+        console.error("Property query error:", propertyError);
+        toast.error(
+          "Property not found or you do not have permission to edit it",
+        );
+        navigate("/manage-properties");
+        return;
+      }
+
+      if (!propertyData) {
+        toast.error(
+          "Property not found or you do not have permission to edit it",
+        );
+        navigate("/manage-properties");
+        return;
+      }
+
+      setProperty(propertyData);
+      setImages(propertyData.property_images || []);
+
+      // Set form data
+      form.reset({
+        title: propertyData.title || "",
+        type: propertyData.property_type || "",
+        description: propertyData.description || "",
+        price: propertyData.price || 0,
+        address: propertyData.address || "",
+        country: propertyData.country || "Nigeria",
+        state: propertyData.state || "",
+        city: propertyData.city || "",
+        neighborhood: propertyData.neighborhood || "",
+        amenities:
+          propertyData.property_amenities?.map((pa: PropertyAmenity) => pa.amenity_id) ||
+          [],
+        number_of_rooms: propertyData.max_guests || 0, // Using max_guests from database
+        has_office_space:
+          propertyData.has_office_space ??
+          extractOfficeSpaceFromRules(propertyData.rules || ""),
+        damage_deposit: propertyData.damage_deposit || undefined,
+        rules: (propertyData.rules || "")
+          .split("\n")
+          .filter((line: string) => !line.trim().startsWith("OFFICE_SPACE:"))
+          .join("\n")
+          .trim(),
+      });
+
+      // Set selectedLocation state (same as ListPropertyPage)
+      setSelectedLocation({
+        country: propertyData.country || "Nigeria",
+        state: propertyData.state || "",
+        city: propertyData.city || "",
+        neighborhood: propertyData.neighborhood || "",
+      });
+
+      // Set custom property type if property type is "Other"
+      if (
+        propertyData.property_type &&
+        !propertyTypes.includes(propertyData.property_type)
+      ) {
+        setCustomPropertyType(propertyData.property_type);
+      }
+    } catch (error: unknown) {
+      console.error("Error loading property:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorDetails = error as any;
+      console.error("Error details:", {
+        message: errorMessage,
+        details: errorDetails?.details,
+        hint: errorDetails?.hint,
+      });
+      toast.error(
+        `Failed to load property details: ${errorMessage}`,
+      );
+      navigate("/manage-properties");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    if (!user?.id || !id) {
+      toast.error("User or property ID is missing");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      console.log("📤 Starting image upload for property:", id);
+      console.log("👤 Current user:", user.id);
+      console.log("📁 Files to upload:", files.length);
+
+      const bucketName =
+        import.meta.env.VITE_PROPERTY_MEDIA_BUCKET || "property-media";
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        // Path structure: property-media/owners/{user_id}/{filename}
+        const filePath = `owners/${user.id}/${fileName}`;
+
+        console.log("⬆️ Uploading file:", fileName, "to path:", filePath);
+
+        // Try to upload to storage bucket
+        const { error: uploadError } = await supabase.storage
+          .from(bucketName)
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error(
+            "❌ Storage upload error for file:",
+            fileName,
+            uploadError,
+          );
+          console.error("Error details:", {
+            message: uploadError.message,
+          });
+          throw new Error(
+            `Failed to upload ${file.name}: ${uploadError.message}`,
+          );
+        }
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+
+        console.log(
+          "✅ File uploaded successfully:",
+          fileName,
+          "URL:",
+          publicUrl,
+        );
+
+        return {
+          url: publicUrl,
+          is_primary: false,
+          property_id: id,
+        };
+      });
+
+      const newImages = await Promise.all(uploadPromises);
+
+      console.log(
+        "💾 Inserting",
+        newImages.length,
+        "image records into database...",
+      );
+      // Insert new images
+      const { error: insertError } = await supabase
+        .from("property_images")
+        .insert(newImages);
+
+      if (insertError) {
+        console.error("❌ Database insert error:", insertError);
+        console.error("Error details:", {
+          message: insertError.message,
+          code: insertError.code,
+        });
+        toast.error(`Failed to save images: ${insertError.message}`);
+        return;
+      }
+
+      console.log("✅ Images saved successfully");
+      // Reload images
+      await loadProperty();
+      toast.success("Images uploaded successfully!");
+    } catch (error: unknown) {
+      console.error("❌ Error uploading images:", error);
+      const errorMessage = error instanceof Error ? error.message : "Please try again";
+      toast.error(
+        `Failed to upload images: ${errorMessage}`,
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteImage = (imageId: string) => {
+    console.log("🖼️ Marking image for deletion:", imageId);
+    
+    // Mark for deletion (don't delete from database yet)
+    setPendingImageDeletions(prev => new Set([...prev, imageId]));
+    
+    // Remove from local state immediately
+    setImages(prev => prev.filter(img => img.id !== imageId));
+    
+    toast.success("Image marked for deletion (will be removed when you save)");
+  };
+
+  const handleSetPrimaryImage = async (imageId: string) => {
+    try {
+      console.log("🖼️ Setting primary image:", imageId);
+      console.log("👤 Current user:", user?.id);
+
+      // First, unset all primary images
+      console.log("🔄 Unsetting all primary images...");
+      const { error: unsetError } = await supabase
+        .from("property_images")
+        .update({ is_primary: false })
+        .eq("property_id", id);
+
+      if (unsetError) {
+        console.error("❌ Error unsetting primary images:", unsetError);
+        toast.error(`Failed to update primary image: ${unsetError.message}`);
+        return;
+      }
+
+      // Then set the selected image as primary
+      console.log("✅ Setting new primary image...");
+      const { error } = await supabase
+        .from("property_images")
+        .update({ is_primary: true })
+        .eq("id", imageId);
+
+      if (error) {
+        console.error("❌ Error setting primary image:", error);
+        console.error("Error details:", {
+          message: error.message,
+          code: error.code,
+        });
+        toast.error(`Failed to update primary image: ${error.message}`);
+        return;
+      }
+
+      console.log("✅ Primary image updated successfully");
+      await loadProperty();
+      toast.success("Primary image updated!");
+    } catch (error: unknown) {
+      console.error("❌ Error setting primary image:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast.error(
+        `Failed to update primary image: ${errorMessage}`,
+      );
+    }
+  };
+
+  const handleSubmit = async (values: PropertyFormValues) => {
+    if (!id || !user) {
+      toast.error("Missing property ID or user information");
+      return;
+    }
+
+    // Validate location
+    if (
+      !selectedLocation.country ||
+      !selectedLocation.state ||
+      !selectedLocation.city
+    ) {
+      console.error("❌ Location validation failed:", selectedLocation);
+      toast.error(
+        "Please select a complete location (country, state, and city)",
+      );
+      return;
+    }
+
+    if (values.type === "other" && !customPropertyType.trim()) {
+      toast.error('Please specify the property type when selecting "Other"');
+      return;
+    }
+
+    if (values.description.split(" ").length < 10) {
+      toast.error("Description must be at least 10 words");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      console.log("💾 Starting property update for:", id);
+      console.log("👤 Current user:", user.id);
+      console.log("📝 Form data:", values);
+
+      // Execute pending image deletions first
+      if (pendingImageDeletions.size > 0) {
+        console.log("🗑️ Executing pending image deletions:", Array.from(pendingImageDeletions));
+        const { error: deleteError } = await supabase
+          .from("property_images")
+          .delete()
+          .in("id", Array.from(pendingImageDeletions));
+
+        if (deleteError) {
+          console.error("❌ Error deleting images:", deleteError);
+          toast.error(`Failed to delete images: ${deleteError.message}`);
+          setSaving(false);
+          return;
+        }
+
+        console.log("✅ Pending deletions executed successfully");
+        setPendingImageDeletions(new Set()); // Clear pending deletions
+      }
+
+      // Update property - ensure user owns it
+      console.log("🔄 Updating property details...");
+
+      // Determine the final property type
+      const finalPropertyType =
+        values.type === "other" && customPropertyType.trim()
+          ? customPropertyType.trim()
+          : values.type;
+
+      // Use comprehensive bypass solution for st_makepoint error
+      console.log("🔄 Using comprehensive database bypass solution...");
+
+      const updateData = {
+        title: values.title,
+        property_type: finalPropertyType,
+        description: values.description,
+        price: values.price,
+        address: values.address,
+        country: selectedLocation.country,
+        state: selectedLocation.state,
+        city: selectedLocation.city,
+        neighborhood: selectedLocation.neighborhood || "",
+        max_guests: values.number_of_rooms,
+        has_office_space: values.has_office_space,
+        rules: addOfficeSpaceToRules(
+          values.rules || null,
+          values.has_office_space,
+        ),
+        updated_at: new Date().toISOString(),
+      };
+
+      const result = await updatePropertyBypassingTriggers(
+        id,
+        user.id,
+        updateData,
+      );
+
+      if (!result.success) {
+        console.error("❌ Comprehensive update failed:", result.error);
+        toast.error(
+          "Database configuration issue: Unable to update property. Please contact administrator with this error: " +
+            (result.error || "Unknown error"),
+          {
+            duration: 15000,
+            action: {
+              label: "Database Fix Instructions",
+              onClick: () => {
+                console.log(`
+ULTIMATE DATABASE FIX REQUIRED:
+1. Open Supabase SQL Editor
+2. Run the complete ULTIMATE_POSTGIS_FIX.sql script
+3. This will install ALL PostGIS functions and disable problematic triggers
+4. Test property updates again after running the script
+
+The script includes:
+- Complete PostGIS installation with all extensions
+- All missing PostGIS functions (st_makepoint, st_setsrid, etc.)
+- Trigger disabling to bypass all geographic functions
+- Direct update function that bypasses triggers completely
+- Comprehensive testing and health monitoring
+              `);
+              },
+            },
+          },
+        );
+        return;
+      }
+
+      if (result.partial) {
+        console.log("⚠️ Partial update successful:", result.error);
+        toast.success("Property partially updated! Basic details saved.", {
+          duration: 8000,
+          description:
+            result.error ||
+            "Some fields require database configuration to save properly.",
+          action: {
+            label: "View Details",
+            onClick: () => {
+              console.log("Partial update result:", result);
+            },
+          },
+        });
+      } else {
+        console.log("✅ Full update successful!");
+        toast.success("Property updated successfully!", {
+          duration: 5000,
+          description: "All changes have been saved.",
+        });
+      }
+
+      console.log("✅ Property updated successfully!");
+      console.log("✅ Property details updated successfully");
+
+      // Update amenities
+      console.log("🔄 Updating amenities...");
+
+      try {
+        // Delete all existing amenities for this property
+        console.log("🗑️ Deleting existing amenities...");
+        const { error: deleteError } = await supabase
+          .from("property_amenities")
+          .delete()
+          .eq("property_id", id);
+
+        if (deleteError) {
+          console.error("❌ Error deleting amenities:", deleteError);
+          throw deleteError;
+        }
+        console.log("✅ Old amenities deleted");
+
+        // Insert new amenities if any
+        if (values.amenities && values.amenities.length > 0) {
+          console.log("📝 Inserting new amenities:", values.amenities);
+
+          // Ensure we're only inserting valid amenity UUIDs
+          const validAmenityIds = availableAmenities.map((a) => a.id);
+          const validAmenities = values.amenities
+            .filter((amenityId) => validAmenityIds.includes(amenityId))
+            .map((amenityId) => ({
+              property_id: id,
+              amenity_id: amenityId,
+            }));
+
+          if (validAmenities.length > 0) {
+            const { error: insertError } = await supabase
+              .from("property_amenities")
+              .insert(validAmenities);
+
+            if (insertError) {
+              console.error("❌ Error inserting amenities:", insertError);
+              throw insertError;
+            }
+            console.log("✅ New amenities inserted successfully");
+          } else {
+            console.log("ℹ️ No valid amenities to insert");
+          }
+        } else {
+          console.log("ℹ️ No amenities to insert");
+        }
+      } catch (error: any) {
+        console.error("❌ Error updating amenities:", error);
+        console.error("Error details:", {
+          message: error.message,
+          code: (error as any).code,
+        });
+        toast.error(`Failed to update amenities: ${error instanceof Error ? error.message : "Unknown error"}`);
+        throw error; // Re-throw to be caught by the outer try-catch
+      }
+
+      // Refresh the location manager to update search results immediately
+      // Temporarily disabled to isolate st_makepoint error
+      // if (typeof window !== 'undefined' && (window as any).supabaseLocationManager) {
+      //   (window as any).supabaseLocationManager.refreshLocations();
+      // }
+
+      toast.success("Property updated successfully!");
+      navigate("/manage-properties");
+    } catch (error: unknown) {
+      console.error("❌ Error updating property:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast.error(
+        `Failed to update property: ${errorMessage}`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p>Loading property details...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="flex flex-col page-wrapper">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p>Property not found</p>
+            <Button
+              onClick={() => navigate("/manage-properties")}
+              className="mt-4"
+            >
+              Back to Properties
+            </Button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col page-wrapper">
+      <Header />
+      
+      <main className="flex-1 pt-20 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <div className="mb-6">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/manage-properties")}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
+            </Button>
+          </div>
+          
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              Edit Property
+            </h1>
+            <p className="text-muted-foreground">
+              Update your property details
+            </p>
+          </div>
+        </div>
+      </main>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="space-y-8"
+        >
+          {/* Basic Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-br from-pastel-yellow/10 to-pastel-peach/10 rounded-lg border border-pastel-yellow/30 -mx-6 px-6 py-4">
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold flex items-center gap-2">
+                          <span className="text-lg">🏠</span>
+                          Property Title *
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            id="title"
+                            placeholder="Enter property title"
+                            className="h-12 w-full text-base bg-white hover:border-pastel-pink/80 hover:bg-pastel-pink/20 transition-all rounded-full border-2 border-pastel-blue/60 focus:ring-2 focus:ring-pastel-blue/50 focus:border-pastel-blue/80 px-4"
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            required
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Property Type */}
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold flex items-center gap-2">
+                        <span className="text-lg">🏘️</span>
+                        Property Type *
+                      </FormLabel>
+                      <Combobox
+                        options={locationTypes.map((type) => type.label)}
+                        value={
+                          locationTypes.find(
+                            (t) => t.value === form.watch("type"),
+                          )?.label || ""
+                        }
+                        onValueChange={(value) => {
+                          const selectedType = locationTypes.find(
+                            (t) => t.label === value,
+                          );
+                          if (selectedType) {
+                            form.setValue("type", selectedType.value);
+                            if (selectedType.value !== "other") {
+                              setCustomPropertyType("");
+                            }
+                          }
+                        }}
+                        placeholder="Select property type"
+                        className="h-12"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                    {/* State */}
+                    <div className="space-y-2">
+                      <FormLabel className="text-base font-semibold">
+                        State/Region *
+                      </FormLabel>
+                      <Combobox
+                        options={availableStates}
+                        value={selectedLocation.state}
+                        onValueChange={(value) => {
+                          setSelectedLocation({
+                            ...selectedLocation,
+                            state: value,
+                            city: "",
+                            neighborhood: "",
+                          });
+                          form.setValue("state", value);
+                        }}
+                        placeholder="State/Region"
+                        className="h-12"
+                        disabled={!selectedLocation.country}
+                      />
+                    </div>
+
+                    {/* City - same behavior as List Property: allow custom city, disabled until state selected */}
+                    <div className="space-y-2">
+                      <FormLabel className="text-base font-semibold">
+                        City *
+                      </FormLabel>
+                      <Combobox
+                        options={cityOptions}
+                        value={selectedLocation.city}
+                        onValueChange={(value) => {
+                          setSelectedLocation({
+                            ...selectedLocation,
+                            city: value,
+                          });
+                          form.setValue("city", value);
+                        }}
+                        placeholder="City"
+                        className="h-12"
+                        disabled={!selectedLocation.state}
+                        allowCustom={true}
+                      />
+                    </div>
+
+                    {/* Neighborhood */}
+                    <FormField
+                      control={form.control}
+                      name="neighborhood"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-semibold">
+                            Neighborhood (Optional)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              id="neighborhood"
+                              placeholder="Enter neighborhood"
+                              className="h-12 w-full text-base bg-white hover:border-pastel-pink/80 hover:bg-pastel-pink/20 transition-all rounded-full border-2 border-pastel-blue/60 focus:ring-2 focus:ring-pastel-blue/50 focus:border-pastel-blue/80 px-4"
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
+                                setSelectedLocation({
+                                  ...selectedLocation,
+                                  neighborhood: e.target.value
+                                });
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Address */}
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-semibold">
+                            Address *
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              id="address"
+                              placeholder="Enter full address"
+                              className="h-12 w-full text-base bg-white hover:border-pastel-pink/80 hover:bg-pastel-pink/20 transition-all rounded-full border-2 border-pastel-blue/60 focus:ring-2 focus:ring-pastel-blue/50 focus:border-pastel-blue/80 px-4"
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              required
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Office Space and Bedrooms */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gradient-to-br from-pastel-green/10 to-pastel-teal/10 rounded-lg border border-pastel-green/30 -mx-6 px-6 py-4">
+                    {/* Office Space */}
+                    <FormField
+                      control={form.control}
+                      name="has_office_space"
+                      render={({ field }) => (
+                        <FormItem className="p-4 bg-white/80 rounded-lg border border-pastel-green/30 shadow-sm transition-all duration-200 hover:shadow-md hover:border-pastel-green/60">
+                          <label className="flex flex-col cursor-pointer h-full">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-base font-semibold flex items-center gap-2">
+                                <span className="text-lg">🏢</span>
+                                Office Space
+                              </span>
+                              <div
+                                className={`w-14 h-7 flex items-center rounded-full p-1 transition-colors duration-200 ${field.value ? "bg-green-500" : "bg-gray-300"}`}
+                              >
+                                <div
+                                  className={`bg-white w-5 h-5 rounded-full shadow-lg transform transition-transform duration-300 ${field.value ? "translate-x-7" : "translate-x-0"}`}
+                                ></div>
+                              </div>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={field.value || false}
+                              onChange={(e) => {
+                                field.onChange(e.target.checked);
+                                console.log(
+                                  "Office space toggled:",
+                                  e.target.checked,
+                                );
+                              }}
+                              className="hidden"
+                            />
+                            <span
+                              className={`text-sm mt-1 block transition-colors duration-200 ${field.value ? "text-green-700 font-medium" : "text-gray-600"}`}
+                            >
+                              {field.value
+                                ? "✓ Office space included"
+                                : "Toggle if this property has a dedicated office space"}
+                            </span>
+                          </label>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Number of Bedrooms */}
+                    <FormField
+                      control={form.control}
+                      name="number_of_rooms"
+                      render={({ field }) => (
+                        <FormItem>
+                          <BedroomCounter
+                            value={field.value || 0}
+                            onChange={(value) => field.onChange(value)}
+                            min={0}
+                            max={20}
+                          />
+                          <FormMessage className="text-sm text-rose-600 mt-2" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="rules">Property Rules (Optional)</Label>
+                    <Textarea
+                      id="rules"
+                      value={form.watch("rules") || ""}
+                      onChange={(e) => form.setValue("rules", e.target.value)}
+                      placeholder="Enter the rules for this property"
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Images */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Property Images</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Display existing images */}
+                  {images.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {images.map((image, index) => (
+                        <div key={image.id} className="relative group">
+                          <img
+                            src={image.url}
+                            alt={`Property image ${index + 1}`}
+                            className="w-full h-48 object-cover rounded-lg"
+                          />
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteImage(image.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {index === 0 && (
+                            <div className="absolute top-2 left-2">
+                              <Badge variant="secondary">Primary</Badge>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload new images */}
+                  <div>
+                    <Label htmlFor="images">Upload Images</Label>
+                    <div className="mt-2">
+                      <MediaUploader
+                        onUploadComplete={async (urls) => {
+                          console.log('📸 MediaUploader completed upload with URLs:', urls);
+                          if (urls.length > 0) {
+                            try {
+                              // Insert new images into database
+                              const { error: insertError } = await supabase
+                                .from('property_images')
+                                .insert(
+                                  urls.map((url, index) => ({
+                                    property_id: id,
+                                    url: url,
+                                    is_primary: images.length === 0 && index === 0, // First image is primary if no existing images
+                                  }))
+                                );
+
+                              if (insertError) {
+                                console.error('❌ Error inserting images:', insertError);
+                                toast.error('Failed to save images to database');
+                                return;
+                              }
+
+                              console.log('✅ Images saved to database successfully');
+                              
+                              // Add to local state immediately (no page reload/scroll)
+                              setImages(prev => [...prev, ...urls.map((url, index) => ({
+                                id: `${Date.now()}-${index}`,
+                                url,
+                                is_primary: images.length === 0 && index === 0,
+                                property_id: id
+                              }))]);
+                              
+                              toast.success(`${urls.length} image${urls.length > 1 ? 's' : ''} uploaded and saved successfully!`);
+                            } catch (error) {
+                              console.error('❌ Error saving images:', error);
+                              toast.error('Failed to save images');
+                            }
+                          }
+                        }}
+                        maxFiles={20}
+                        acceptedTypes={['image/*', 'video/*']}
+                        mockMode={false} // Disable mock mode for real uploads
+                        pathPrefix={`owners/${user?.id}`}
+                        enableCoverSelect={false}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Amenities */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Amenities</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {availableAmenities.map((amenity) => (
+                      <div
+                        key={amenity.id}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={amenity.id}
+                          checked={form.watch("amenities").includes(amenity.id)}
+                          onCheckedChange={() => {
+                            const currentAmenities = form.watch("amenities");
+                            if (currentAmenities.includes(amenity.id)) {
+                              form.setValue(
+                                "amenities",
+                                currentAmenities.filter(
+                                  (a) => a !== amenity.id,
+                                ),
+                              );
+                            } else {
+                              form.setValue("amenities", [
+                                ...currentAmenities,
+                                amenity.id,
+                              ]);
+                            }
+                          }}
+                        />
+                        <Label htmlFor={amenity.id} className="text-sm">
+                          {amenity.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Submit Button */}
+              <div className="flex justify-end space-x-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/manage-properties")}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
+export default EditPropertyPage;
