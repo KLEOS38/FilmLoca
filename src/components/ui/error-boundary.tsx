@@ -28,13 +28,13 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     console.error('🚨 Error Boundary caught an error:', {
       message: error.message,
       name: error.name,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      errorInfo: process.env.NODE_ENV === 'development' ? errorInfo : undefined,
+      stack: import.meta.env.DEV ? error.stack : undefined,
+      errorInfo: import.meta.env.DEV ? errorInfo : undefined,
       timestamp: new Date().toISOString()
     });
     
     // In development, log more details
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.error('Full error object:', error);
       console.error('Error info:', errorInfo);
       console.error('Component stack:', errorInfo.componentStack);
@@ -64,7 +64,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             <p className="text-sm text-muted-foreground mb-2">
               An unexpected error occurred. This has been logged for review.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <div className="mb-4 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 font-mono overflow-auto max-h-40">
                 <strong>Error:</strong> {this.state.error.message}
                 {this.state.error.stack && (

@@ -2,27 +2,21 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Use environment variables from .env.local
-// IMPORTANT: Create a .env.local file with your Supabase credentials
-// See CONNECT_NEW_SUPABASE_PROJECT.md for setup instructions
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Get environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Debugging: This will show in the Browser Console (F12)
-console.log("🔍 Checking Supabase URL:", SUPABASE_URL); 
-console.log("🔍 Checking Supabase Key prefix:", SUPABASE_PUBLISHABLE_KEY?.substring(0, 20) + "...");
+console.log("🔍 Checking Supabase URL:", supabaseUrl); 
+console.log("🔍 Checking Supabase Key prefix:", supabaseAnonKey?.substring(0, 20) + "...");
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  throw new Error("Missing Supabase environment variables!");
-}
-
-// Validate that we have required values
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  console.error('❌ Missing Supabase configuration!');
-  console.error('📝 Please create a .env.local file in project root with:');
-  console.error('   VITE_SUPABASE_URL=your_project_url');
-  console.error('   VITE_SUPABASE_ANON_KEY=your_anon_key');
-  console.error('📖 See CONNECT_NEW_SUPABASE_PROJECT.md for detailed instructions.');
+// Validate environment variables
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing Supabase environment variables!');
+  console.error('📝 Expected environment variables:');
+  console.error('   VITE_SUPABASE_URL=your_supabase_url');
+  console.error('   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key');
+  console.error('� Check GitHub Actions secrets if this is production');
   
   // In production, show user-friendly error
   if (typeof window !== 'undefined' && window.location.hostname === 'filmloca.com') {
@@ -30,13 +24,13 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     if (root) {
       root.innerHTML = `
         <div style="padding: 40px; text-align: center; font-family: Arial, sans-serif;">
-          <h2 style="color: #ff6b6b;">🔧 FilmLoca Setup Required</h2>
+          <h2 style="color: #ff6b6b;">🔧 FilmLoca Configuration Required</h2>
           <p style="color: #666; margin: 20px 0;">
-            The application is loading configuration. Please wait a moment...
+            The application is missing required configuration.
           </p>
           <div style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px;">
             <p style="margin: 0; color: #495057;">
-              If this message persists, please check the browser console for technical details.
+              Please check the browser console (F12) for technical details.
             </p>
           </div>
         </div>
@@ -44,14 +38,22 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     }
   }
   
-  throw new Error('Supabase configuration is required. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local');
+  throw new Error('Supabase configuration is required. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
+
+// Validate URL format
+try {
+  new URL(supabaseUrl);
+} catch (e) {
+  console.error('❌ Invalid Supabase URL format:', supabaseUrl);
+  throw new Error(`Invalid Supabase URL: ${supabaseUrl}. Must be a valid HTTP or HTTPS URL.`);
 }
 
 // Log configuration (without exposing the full key)
 if (typeof window !== 'undefined') {
   console.log('🔧 Supabase Configuration:', {
-    url: SUPABASE_URL,
-    keyPrefix: SUPABASE_PUBLISHABLE_KEY.substring(0, 20) + '...',
+    url: supabaseUrl,
+    keyPrefix: supabaseAnonKey.substring(0, 20) + '...',
     usingEnvVars: !!import.meta.env.VITE_SUPABASE_URL
   });
 }
@@ -59,7 +61,7 @@ if (typeof window !== 'undefined') {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: localStorage,
     persistSession: true,

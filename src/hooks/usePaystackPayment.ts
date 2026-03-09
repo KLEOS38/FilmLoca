@@ -75,7 +75,7 @@ export const usePaystackPayment = () => {
       }
 
       // Check if this is a test booking
-      const isTestBooking = process.env.NODE_ENV === 'test' || 
+      const isTestBooking = import.meta.env.MODE === 'test' || 
                           bookingData.propertyId.startsWith('test-') ||
                           !bookingData.propertyId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
       
@@ -103,7 +103,7 @@ export const usePaystackPayment = () => {
         };
 
         // In a real test environment, you might want to save this to a test database
-        if (process.env.NODE_ENV === 'test') {
+        if (import.meta.env.MODE === 'test') {
           // Save to test database or in-memory store
           console.log('Saving test booking to test database');
           // In a real test setup, you would use a test database here
@@ -147,7 +147,7 @@ export const usePaystackPayment = () => {
 
       // Check if this is a test booking
       const isTestBooking = testMode || 
-                          process.env.NODE_ENV === 'test' || 
+                          import.meta.env.MODE === 'test' || 
                           bookingData.propertyId.startsWith('test-');
 
       // For test bookings, create and save to database
