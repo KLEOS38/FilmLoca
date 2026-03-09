@@ -31,5 +31,4 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
           server-dir: /filmloca.com/
-          exclude: ""
-          log-level: "verbose"
+          port: 21
