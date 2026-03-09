@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('📝 Expected environment variables:');
   console.error('   VITE_SUPABASE_URL=your_supabase_url');
   console.error('   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key');
-  console.error('� Check GitHub Actions secrets if this is production');
+  console.error('🔧 Check GitHub Actions secrets if this is production');
   
   // In production, show user-friendly error
   if (typeof window !== 'undefined' && window.location.hostname === 'filmloca.com') {
@@ -39,6 +39,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   }
   
   throw new Error('Supabase configuration is required. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
+
+// Check for hardcoded placeholder values
+if (supabaseUrl === "your_supabase_project_url" || supabaseAnonKey === "your_supabase_anon_key") {
+  throw new Error("Hardcoded placeholder detected! VITE_SUPABASE_URL is not properly configured. Check your GitHub Secrets.");
 }
 
 // Validate URL format
