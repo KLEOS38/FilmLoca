@@ -8,6 +8,14 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Debugging: This will show in the Browser Console (F12)
+console.log("🔍 Checking Supabase URL:", SUPABASE_URL); 
+console.log("🔍 Checking Supabase Key prefix:", SUPABASE_PUBLISHABLE_KEY?.substring(0, 20) + "...");
+
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error("Missing Supabase environment variables!");
+}
+
 // Validate that we have required values
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.error('❌ Missing Supabase configuration!');
