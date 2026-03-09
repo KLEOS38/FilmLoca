@@ -43,5 +43,3 @@ jobs:
           server-dir: /filmloca.com/
           port: 21
           force: true
-          delete: true
-          exclude: ""
