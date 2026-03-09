@@ -27,8 +27,8 @@ jobs:
           npm install
           npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_PAYSTACK_PUBLIC_KEY: ${{ secrets.VITE_PAYSTACK_PUBLIC_KEY }}
           VITE_PAYSTACK_CALLBACK_URL: ${{ secrets.VITE_PAYSTACK_CALLBACK_URL }}
           VITE_PAYSTACK_WEBHOOK_URL: ${{ secrets.VITE_PAYSTACK_WEBHOOK_URL }}
