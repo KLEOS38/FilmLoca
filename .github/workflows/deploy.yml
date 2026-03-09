@@ -33,6 +33,47 @@ jobs:
           VITE_PAYSTACK_CALLBACK_URL: ${{ secrets.VITE_PAYSTACK_CALLBACK_URL }}
           VITE_PAYSTACK_WEBHOOK_URL: ${{ secrets.VITE_PAYSTACK_WEBHOOK_URL }}
 
+      - name: Cleanup Old Files
+        run: |
+          echo "🗑️ Cleaning up old files to prevent cPanel soft delete issues..."
+          # Create a cleanup script to force hard delete
+          cat > cleanup.php << 'EOF'
+          <?php
+          // Force hard delete of files to prevent cPanel recovery
+          function forceDelete(\$dir) {
+              if (is_dir(\$dir)) {
+                  \$files = scandir(\$dir);
+                  foreach (\$files as \$file) {
+                      if (\$file != "." && \$file != "..") {
+                          \$path = \$dir . "/" . \$file;
+                          if (is_dir(\$path)) {
+                              forceDelete(\$path);
+                          } else {
+                              unlink(\$path); // Hard delete, not move to trash
+                          }
+                      }
+                  }
+                  rmdir(\$dir);
+              } else {
+                  unlink(\$dir);
+              }
+          }
+          
+          // Delete old build files
+          \$oldFiles = ['index.html', 'cache-cleared.html', 'test.html'];
+          foreach (\$oldFiles as \$file) {
+              if (file_exists(\$file)) {
+                  echo "Deleting: " . \$file;
+                  forceDelete(\$file);
+              }
+          }
+          echo "✅ Cleanup completed";
+          EOF
+          
+          # Upload and execute cleanup script
+          curl -T cleanup.php ftp://miladama.com/filmloca.com/cleanup.php --user deploy@filmloca.com:Vxrified38$
+          curl "ftp://miladama.com/filmloca.com/cleanup.php" --user deploy@filmloca.com:Vxrified38$
+
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
