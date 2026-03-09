@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FilmLoca Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .error { color: red; background: #ffeeee; padding: 10px; margin: 10px 0; }
+        .success { color: green; background: #eeffee; padding: 10px; margin: 10px 0; }
+        .info { color: blue; background: #eeeeff; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>FilmLoca Debug Page</h1>
+    <div id="debug-info"></div>
+    <div id="root" style="border: 2px solid #ccc; padding: 20px; margin: 20px 0;">
+        <p>React app should load here...</p>
+    </div>
+
+    <!-- Load the same scripts as the real app -->
+    <link rel="stylesheet" href="/assets/index-kRTUbkGJ.css">
+    
+    <script>
+        const debugDiv = document.getElementById('debug-info');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            debugDiv.appendChild(div);
+        }
+        
+        log('Debug page loaded');
+        log('Attempting to load React app...');
+        
+        // Load React scripts with error handling
+        const scripts = [
+            '/assets/react-vendor-CrK4s8q4.js',
+            '/assets/supabase-vendor-B07dSRCg.js', 
+            '/assets/ui-vendor-bcAMCiAd.js',
+            '/assets/index-BL3tUhnW.js'
+        ];
+        
+        let loadedScripts = 0;
+        
+        scripts.forEach(src => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = () => {
+                loadedScripts++;
+                log(`✅ Loaded: ${src}`, 'success');
+                if (loadedScripts === scripts.length) {
+                    log('All scripts loaded, checking if React initialized...', 'info');
+                    setTimeout(() => {
+                        const root = document.getElementById('root');
+                        if (root.children.length > 1) {
+                            log('✅ React app appears to be running!', 'success');
+                        } else {
+                            log('❌ React app did not initialize', 'error');
+                        }
+                    }, 2000);
+                }
+            };
+            script.onerror = () => {
+                log(`❌ Failed to load: ${src}`, 'error');
+            };
+            document.head.appendChild(script);
+        });
+        
+        // Global error handler
+        window.addEventListener('error', (e) => {
+            log(`❌ JavaScript Error: ${e.message}`, 'error');
+        });
+        
+        window.addEventListener('unhandledrejection', (e) => {
+            log(`❌ Promise Rejection: ${e.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>

@@ -8,13 +8,34 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Validate that we have the required values
+// Validate that we have required values
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.error('❌ Missing Supabase configuration!');
-  console.error('📝 Please create a .env.local file in the project root with:');
+  console.error('📝 Please create a .env.local file in project root with:');
   console.error('   VITE_SUPABASE_URL=your_project_url');
   console.error('   VITE_SUPABASE_ANON_KEY=your_anon_key');
   console.error('📖 See CONNECT_NEW_SUPABASE_PROJECT.md for detailed instructions.');
+  
+  // In production, show user-friendly error
+  if (typeof window !== 'undefined' && window.location.hostname === 'filmloca.com') {
+    const root = document.getElementById('root');
+    if (root) {
+      root.innerHTML = `
+        <div style="padding: 40px; text-align: center; font-family: Arial, sans-serif;">
+          <h2 style="color: #ff6b6b;">🔧 FilmLoca Setup Required</h2>
+          <p style="color: #666; margin: 20px 0;">
+            The application is loading configuration. Please wait a moment...
+          </p>
+          <div style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <p style="margin: 0; color: #495057;">
+              If this message persists, please check the browser console for technical details.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+  }
+  
   throw new Error('Supabase configuration is required. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local');
 }
 
