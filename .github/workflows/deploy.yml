@@ -18,18 +18,16 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Setup Environment Variables
-        run: |
-          echo "VITE_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> $GITHUB_ENV
-          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> $GITHUB_ENV
-          echo "VITE_PAYSTACK_PUBLIC_KEY=${{ secrets.PAYSTACK_PUBLIC_KEY }}" >> $GITHUB_ENV
-          echo "VITE_PAYSTACK_CALLBACK_URL=${{ secrets.PAYSTACK_CALLBACK_URL }}" >> $GITHUB_ENV
-          echo "VITE_PAYSTACK_WEBHOOK_URL=${{ secrets.PAYSTACK_WEBHOOK_URL }}" >> $GITHUB_ENV
-
       - name: Install and Build
         run: |
           npm install
           npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_PAYSTACK_PUBLIC_KEY: ${{ secrets.PAYSTACK_PUBLIC_KEY }}
+          VITE_PAYSTACK_CALLBACK_URL: ${{ secrets.PAYSTACK_CALLBACK_URL }}
+          VITE_PAYSTACK_WEBHOOK_URL: ${{ secrets.PAYSTACK_WEBHOOK_URL }}
 
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
